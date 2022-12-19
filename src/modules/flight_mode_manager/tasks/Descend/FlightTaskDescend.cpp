@@ -43,6 +43,7 @@ bool FlightTaskDescend::activate(const trajectory_setpoint_s &last_setpoint)
 	_acceleration_setpoint = matrix::Vector3f(0.f, 0.f, NAN);
 	// keep heading
 	_yaw_setpoint = _yaw;
+	_gear.landing_gear = landing_gear_s::GEAR_DOWN;
 	return ret;
 }
 
