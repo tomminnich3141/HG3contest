@@ -228,7 +228,12 @@ float get_air_density(float static_pressure, float temperature_celsius)
 	return static_pressure / (CONSTANTS_AIR_GAS_CONST * (temperature_celsius - CONSTANTS_ABSOLUTE_NULL_CELSIUS));
 }
 
-float calc_CAS_from_TAS(float speed_true, float pressure_ambient, float temperature_celsius)
+float calc_true_from_calibrated_airspeed(float speed_calibrated, float air_density)
 {
-	return speed_true * sqrtf(get_air_density(pressure_ambient, temperature_celsius) / CONSTANTS_AIR_DENSITY_SEA_LEVEL_15C);
+	return speed_calibrated * sqrtf(CONSTANTS_AIR_DENSITY_SEA_LEVEL_15C / air_density);
+}
+
+float calc_calibrated_from_true_airspeed(float speed_true, float air_density)
+{
+	return speed_true * sqrtf(air_density / CONSTANTS_AIR_DENSITY_SEA_LEVEL_15C);
 }

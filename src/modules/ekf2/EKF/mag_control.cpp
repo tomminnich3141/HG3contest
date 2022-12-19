@@ -128,7 +128,7 @@ void Ekf::controlMagFusion()
 		}
 
 		if (_control_status.flags.in_air) {
-			checkHaglYawResetReq();
+			/* checkHaglYawResetReq(); */
 			runInAirYawReset(mag_sample.mag);
 
 		} else {

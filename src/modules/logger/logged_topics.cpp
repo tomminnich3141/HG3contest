@@ -55,20 +55,19 @@ void LoggedTopics::add_default_topics()
 	add_topic("airspeed", 1000);
 	add_optional_topic("airspeed_validated", 200);
 	add_optional_topic("autotune_attitude_control_status", 100);
-	add_optional_topic("camera_capture");
 	add_optional_topic("camera_trigger");
 	add_topic("cellular_status", 200);
 	add_topic("commander_state");
 	add_topic("cpuload");
+	add_topic("custom_action_status");
 	add_optional_topic("esc_status", 250);
 	add_topic("failure_detector_status", 100);
-	add_optional_topic("follow_target", 500);
 	add_optional_topic("generator_status");
-	add_optional_topic("gps_dump");
+	add_optional_topic("gripper");
 	add_optional_topic("heater_status");
-	add_topic("home_position");
 	add_topic("hover_thrust_estimate", 100);
 	add_topic("input_rc", 500);
+	add_topic("log_message_incoming");
 	add_optional_topic("internal_combustion_engine_status", 10);
 	add_optional_topic("irlock_report", 1000);
 	add_optional_topic("landing_target_pose", 1000);
@@ -76,15 +75,16 @@ void LoggedTopics::add_default_topics()
 	add_topic("manual_control_setpoint", 200);
 	add_topic("manual_control_switches");
 	add_topic("mission_result");
-	add_topic("navigator_mission_item");
 	add_topic("npfg_status", 100);
 	add_topic("offboard_control_mode", 100);
-	add_topic("onboard_computer_status", 10);
 	add_topic("parameter_update");
+	add_topic("onboard_computer_status", 10);
+	add_topic("autotune_attitude_control_status", 100);
 	add_topic("position_controller_status", 500);
-	add_topic("position_setpoint_triplet", 200);
+	add_topic("position_controller_landing_status", 100);
 	add_optional_topic("px4io_status");
 	add_topic("radio_status");
+	add_topic("radio_status_extensions");
 	add_topic("rtl_time_estimate", 1000);
 	add_topic("sensor_combined");
 	add_optional_topic("sensor_correction");
@@ -95,27 +95,42 @@ void LoggedTopics::add_default_topics()
 	add_optional_topic("takeoff_status", 1000);
 	add_optional_topic("tecs_status", 200);
 	add_topic("trajectory_setpoint", 200);
-	add_topic("transponder_report");
 	add_topic("vehicle_acceleration", 50);
 	add_topic("vehicle_air_data", 200);
 	add_topic("vehicle_angular_velocity", 20);
 	add_topic("vehicle_attitude", 50);
 	add_topic("vehicle_attitude_setpoint", 50);
-	add_topic("vehicle_command");
+	add_topic("vehicle_command_ack");
 	add_topic("vehicle_constraints", 1000);
 	add_topic("vehicle_control_mode");
-	add_topic("vehicle_global_position", 200);
-	add_topic("vehicle_gps_position", 500);
 	add_topic("vehicle_land_detected");
-	add_topic("vehicle_local_position", 100);
 	add_topic("vehicle_local_position_setpoint", 100);
 	add_topic("vehicle_magnetometer", 200);
 	add_topic("vehicle_rates_setpoint", 20);
-	add_topic("vehicle_roi", 1000);
 	add_topic("vehicle_status");
 	add_topic("vehicle_status_flags");
 	add_optional_topic("vtol_vehicle_status", 200);
 	add_topic("wind", 1000);
+
+	add_topic("vehicle_local_position_wo_ref", 100);
+	add_topic("vehicle_gps_position_wo_lat_lon", 500);
+
+	if (!_do_not_log_position_data) {
+		add_optional_topic("camera_capture");
+		add_topic("follow_target_status", 100);
+		add_optional_topic("follow_target", 500);
+		add_topic("follow_target_estimator", 100);
+		add_optional_topic("gps_dump");
+		add_topic("home_position");
+		add_topic("navigator_mission_item");
+		add_topic("position_setpoint_triplet", 200);
+		add_topic("transponder_report");
+		add_topic("vehicle_command");
+		add_topic("vehicle_global_position", 200);
+		add_topic("vehicle_gps_position", 500);
+		add_topic("vehicle_local_position", 100);
+		add_topic("vehicle_roi", 1000);
+	}
 
 	// multi topics
 	add_optional_topic_multi("actuator_outputs", 100, 3);
@@ -133,8 +148,12 @@ void LoggedTopics::add_default_topics()
 	static constexpr uint8_t MAX_ESTIMATOR_INSTANCES = 6; // artificially limited until PlotJuggler fixed
 	add_optional_topic("estimator_selector_status");
 	add_optional_topic_multi("estimator_attitude", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_global_position", 1000, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_local_position", 500, MAX_ESTIMATOR_INSTANCES);
+
+	if (!_do_not_log_position_data) {
+		add_optional_topic_multi("estimator_global_position", 1000, MAX_ESTIMATOR_INSTANCES);
+		add_optional_topic_multi("estimator_local_position", 500, MAX_ESTIMATOR_INSTANCES);
+	}
+
 	add_optional_topic_multi("estimator_wind", 1000, MAX_ESTIMATOR_INSTANCES);
 #endif
 
@@ -174,14 +193,16 @@ void LoggedTopics::add_default_topics()
 	add_topic_multi("optical_flow", 1000, 1);
 	add_optional_topic_multi("sensor_accel", 1000, 4);
 	add_optional_topic_multi("sensor_baro", 1000, 4);
-	add_topic_multi("sensor_gps", 1000, 2);
+
+	if (!_do_not_log_position_data) { add_topic_multi("sensor_gps", 1000, 2); }
+
 	add_topic_multi("sensor_gnss_relative", 1000, 1);
-	add_optional_topic("pps_capture", 1000);
 	add_optional_topic_multi("sensor_gyro", 1000, 4);
 	add_optional_topic_multi("sensor_mag", 1000, 4);
 	add_topic_multi("vehicle_imu", 500, 4);
 	add_topic_multi("vehicle_imu_status", 1000, 4);
 	add_optional_topic_multi("vehicle_magnetometer", 500, 4);
+	add_optional_topic("pps_capture");
 
 	// SYS_CTRL_ALLOC: additional dynamic control allocation logging when enabled
 	int32_t sys_ctrl_alloc = 0;
@@ -239,6 +260,20 @@ void LoggedTopics::add_default_topics()
 	add_topic("wind");
 	add_topic("yaw_estimator_status");
 #endif /* CONFIG_ARCH_BOARD_PX4_SITL */
+
+	int32_t mount_input_mode = -1;
+	param_get(param_find("MNT_MODE_IN"), &mount_input_mode);
+
+	if (mount_input_mode != -1) {
+		// Gimbal general topics
+		add_topic("gimbal_device_set_attitude", 100);
+		add_topic("gimbal_manager_set_attitude");  // ~ 5Hz
+		add_topic("gimbal_manager_set_manual_control"); // ~ 5Hz
+		add_topic("gimbal_device_attitude_status", 100);
+		add_topic("gimbal_device_information", 1000);
+		add_topic("gimbal_manager_information");
+		add_topic("gimbal_manager_status"); // ~ 5Hz
+	}
 }
 
 void LoggedTopics::add_high_rate_topics()
@@ -287,7 +322,9 @@ void LoggedTopics::add_estimator_replay_topics()
 	add_topic("sensor_combined");
 	add_topic("sensor_selection");
 	add_topic("vehicle_air_data");
-	add_topic("vehicle_gps_position");
+
+	if (!_do_not_log_position_data) { add_topic("vehicle_gps_position"); }
+
 	add_topic("vehicle_land_detected");
 	add_topic("vehicle_magnetometer");
 	add_topic("vehicle_status");
@@ -315,6 +352,8 @@ void LoggedTopics::add_vision_and_avoidance_topics()
 	add_topic("collision_constraints");
 	add_topic("obstacle_distance_fused");
 	add_topic("vehicle_mocap_odometry", 30);
+	add_topic("vehicle_odometry", 30);
+	add_topic("vehicle_trajectory_bezier", 200);
 	add_topic("vehicle_trajectory_waypoint", 200);
 	add_topic("vehicle_trajectory_waypoint_desired", 200);
 	add_topic("vehicle_visual_odometry", 30);
@@ -402,13 +441,16 @@ int LoggedTopics::add_topics_from_file(const char *fname)
 void LoggedTopics::initialize_mission_topics(MissionLogType mission_log_type)
 {
 	if (mission_log_type == MissionLogType::Complete) {
-		add_mission_topic("camera_capture");
 		add_mission_topic("mission_result");
-		add_mission_topic("vehicle_global_position", 1000);
 		add_mission_topic("vehicle_status", 1000);
 
+		if (!_do_not_log_position_data) {
+			add_mission_topic("camera_capture");
+			add_mission_topic("vehicle_global_position", 1000);
+		}
+
 	} else if (mission_log_type == MissionLogType::Geotagging) {
-		add_mission_topic("camera_capture");
+		if (!_do_not_log_position_data) { add_mission_topic("camera_capture"); }
 	}
 }
 
@@ -510,6 +552,11 @@ bool LoggedTopics::initialize_logged_topics(SDLogProfileMask profile)
 
 void LoggedTopics::initialize_configured_topics(SDLogProfileMask profile)
 {
+	int32_t do_not_log_position_data = 0;
+	param_get(param_find("SDLOG_NO_POS_DAT"), &do_not_log_position_data);
+
+	_do_not_log_position_data = do_not_log_position_data >= 1;
+
 	// load appropriate topics for profile
 	// the order matters: if several profiles add the same topic, the logging rate of the last one will be used
 	if (profile & SDLogProfileMask::DEFAULT) {
