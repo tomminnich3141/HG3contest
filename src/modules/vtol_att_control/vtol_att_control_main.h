@@ -71,6 +71,7 @@
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/position_setpoint_triplet.h>
+#include <uORB/topics/spoilers_setpoint.h>
 #include <uORB/topics/tecs_status.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
@@ -172,6 +173,7 @@ private:
 
 	uORB::Publication<actuator_controls_s>			_actuator_controls_0_pub{ORB_ID(actuator_controls_0)};		//input for the mixer (roll,pitch,yaw,thrust)
 	uORB::Publication<actuator_controls_s>			_actuator_controls_1_pub{ORB_ID(actuator_controls_1)};
+	uORB::Publication<spoilers_setpoint_s>			_spoilers_setpoint_pub{ORB_ID(spoilers_setpoint)};
 	uORB::Publication<vehicle_attitude_setpoint_s>		_vehicle_attitude_sp_pub{ORB_ID(vehicle_attitude_setpoint)};
 	uORB::PublicationMulti<vehicle_thrust_setpoint_s>	_vehicle_thrust_setpoint0_pub{ORB_ID(vehicle_thrust_setpoint)};
 	uORB::PublicationMulti<vehicle_thrust_setpoint_s>	_vehicle_thrust_setpoint1_pub{ORB_ID(vehicle_thrust_setpoint)};
@@ -234,6 +236,7 @@ private:
 	void 		parameters_update();
 
 	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::VT_TYPE>) _param_vt_type
+		(ParamInt<px4::params::VT_TYPE>) _param_vt_type,
+		(ParamFloat<px4::params::VT_SPOILER_MC_LD>) _param_vt_spoiler_mc_ld
 	)
 };

@@ -77,6 +77,7 @@ VtolAttitudeControl::VtolAttitudeControl() :
 		exit_and_cleanup();
 	}
 
+	_spoilers_setpoint_pub.advertise();
 	_vtol_vehicle_status_pub.advertise();
 	_vehicle_thrust_setpoint0_pub.advertise();
 	_vehicle_torque_setpoint0_pub.advertise();
@@ -412,6 +413,21 @@ VtolAttitudeControl::Run()
 		// Advertise/Publish vtol vehicle status
 		_vtol_vehicle_status.timestamp = hrt_absolute_time();
 		_vtol_vehicle_status_pub.publish(_vtol_vehicle_status);
+
+		// publish spoiler setpoint with configured deflection in hover, don't do any slew rate filtering
+		if (_vtol_vehicle_status.vehicle_vtol_state == vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC) {
+			float spoiler_control = 0.f;
+
+			if ((_pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) ||
+			    _vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_DESCEND) {
+				spoiler_control = _param_vt_spoiler_mc_ld.get();
+			}
+
+			spoilers_setpoint_s spoiler_setpoint;
+			spoiler_setpoint.normalized_setpoint = spoiler_control;
+			spoiler_setpoint.timestamp = hrt_absolute_time();
+			_spoilers_setpoint_pub.publish(spoiler_setpoint);
+		}
 	}
 
 	perf_end(_loop_perf);
