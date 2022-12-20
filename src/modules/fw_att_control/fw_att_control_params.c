@@ -256,3 +256,15 @@ PARAM_DEFINE_FLOAT(FW_PSP_OFF, 0.0f);
  * @group FW Attitude Control
  */
 PARAM_DEFINE_FLOAT(FW_MAN_YR_MAX, 30.f);
+
+/**
+ * Spoiler input in manual flight
+ *
+ * Chose source for manual setting of spoilers in manual flight modes.
+ *
+ * @value 0 Disabled
+ * @value 1 Flaps channel
+ * @value 2 Aux1
+ * @group FW Attitude Control
+ */
+PARAM_DEFINE_INT32(FW_SPOILERS_MAN, 0);

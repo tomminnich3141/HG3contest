@@ -419,6 +419,46 @@ void FixedwingAttitudeControl::Run()
 			// full manual
 			_wheel_ctrl.reset_integrator();
 		}
+
+		// manual flaps/spoilers control (is handled and published in FW Position controller if Auto)
+		if (_vcontrol_mode.flag_control_manual_enabled) {
+
+			// Flaps control
+			float flaps_control = 0.f; // default to no flaps
+
+			/* map flaps by default to manual if valid */
+			if (PX4_ISFINITE(_manual_control_setpoint.flaps)) {
+				flaps_control = (_manual_control_setpoint.flaps + 1.f) / 2.f ; // map from [-1, 1] to [0, 1]
+			}
+
+			flaps_setpoint_s flaps_setpoint;
+			flaps_setpoint.timestamp = hrt_absolute_time();
+			flaps_setpoint.normalized_setpoint = flaps_control;
+			_flaps_setpoint_pub.publish(flaps_setpoint);
+
+			// Spoilers control
+			float spoilers_control = 0.f; // default to no spoilers
+
+			switch (_param_fw_spoilers_man.get()) {
+			case 0:
+				break;
+
+			case 1:
+				// map from [-1, 1] to [0, 1]
+				spoilers_control = PX4_ISFINITE(_manual_control_setpoint.flaps) ? (_manual_control_setpoint.flaps + 1.f) / 2.f : 0.f;
+				break;
+
+			case 2:
+				// map from [-1, 1] to [0, 1]
+				spoilers_control = PX4_ISFINITE(_manual_control_setpoint.aux1) ? (_manual_control_setpoint.aux1 + 1.f) / 2.f : 0.f;
+				break;
+			}
+
+			spoilers_setpoint_s spoilers_setpoint;
+			spoilers_setpoint.timestamp = hrt_absolute_time();
+			spoilers_setpoint.normalized_setpoint = spoilers_control;
+			_spoilers_setpoint_pub.publish(spoilers_setpoint);
+		}
 	}
 
 	// backup schedule

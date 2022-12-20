@@ -69,6 +69,12 @@ FixedwingPositionControl::FixedwingPositionControl(bool vtol) :
 	_launch_detection_status_pub.advertise();
 	_landing_gear_pub.advertise();
 
+	_flaps_setpoint_pub.advertise();
+	_spoilers_setpoint_pub.advertise();
+
+	_flaps_setpoint_with_slewrate.setSlewRate(kFlapSlewRate);
+	_spoilers_setpoint_with_slewrate.setSlewRate(kSpoilersSlewRate);
+
 	_airspeed_slew_rate_controller.setSlewRate(ASPD_SP_SLEW_RATE);
 
 	/* fetch initial parameter values */
@@ -914,8 +920,8 @@ FixedwingPositionControl::control_auto(const float control_interval, const Vecto
 		_att_sp.thrust_body[0] = 0.0f;
 		_att_sp.roll_body = 0.0f;
 		_att_sp.pitch_body = radians(_param_fw_psp_off.get());
-		_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-		_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+		_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+		_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 		break;
 
@@ -979,8 +985,8 @@ FixedwingPositionControl::control_auto_fixed_bank_alt_hold(const float control_i
 
 	_att_sp.pitch_body = get_tecs_pitch();
 
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 }
 
 void
@@ -1010,8 +1016,8 @@ FixedwingPositionControl::control_auto_descend(const float control_interval)
 	_att_sp.thrust_body[0] = (_landed) ? _param_fw_thr_min.get() : min(get_tecs_thrust(), _param_fw_thr_max.get());
 	_att_sp.pitch_body = get_tecs_pitch();
 
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 }
 
 uint8_t
@@ -1175,8 +1181,8 @@ FixedwingPositionControl::control_auto_position(const float control_interval, co
 
 	_att_sp.yaw_body = _yaw; // yaw is not controlled, so set setpoint to current yaw
 
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 	tecs_update_pitch_throttle(control_interval,
 				   position_sp_alt,
@@ -1234,8 +1240,8 @@ FixedwingPositionControl::control_auto_velocity(const float control_interval, co
 
 	_att_sp.yaw_body = _yaw;
 
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 	tecs_update_pitch_throttle(control_interval,
 				   position_sp_alt,
@@ -1312,13 +1318,13 @@ FixedwingPositionControl::control_auto_loiter(const float control_interval, cons
 		// have to do this switch (which can cause significant altitude errors) close to the ground.
 		_tecs.set_height_error_time_constant(_param_fw_thrtc_sc.get() * _param_fw_t_h_error_tc.get());
 		airspeed_sp = (_param_fw_lnd_airspd.get() > FLT_EPSILON) ? _param_fw_lnd_airspd.get() : _param_fw_airspd_min.get();
-		_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_LAND;
-		_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_LAND;
+		_flaps_setpoint_with_slewrate.update(_param_fw_flaps_lnd_scl.get(), control_interval);
+		_spoilers_setpoint_with_slewrate.update(_param_fw_spoilers_lnd.get(), control_interval);
 		_new_landing_gear_position = landing_gear_s::GEAR_DOWN;
 
 	} else {
-		_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-		_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+		_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+		_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 	}
 
 	float target_airspeed = adapt_airspeed_setpoint(control_interval, airspeed_sp, _param_fw_airspd_min.get(),
@@ -1513,8 +1519,8 @@ FixedwingPositionControl::control_auto_takeoff(const hrt_abstime &now, const flo
 		_att_sp.thrust_body[0] = _runway_takeoff.getThrottle(_param_fw_thr_idle.get(), get_tecs_thrust());
 
 		// apply flaps for takeoff according to the corresponding scale factor set via FW_FLAPS_TO_SCL
-		_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_TAKEOFF;
-		_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+		_spoilers_setpoint_with_slewrate.update(_param_fw_flaps_to_scl.get(), control_interval);
+		_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 		// retract ladning gear once passed the climbout state
 		if (_runway_takeoff.getState() > RunwayTakeoffState::CLIMBOUT) {
@@ -1614,8 +1620,8 @@ FixedwingPositionControl::control_auto_takeoff(const hrt_abstime &now, const flo
 			_att_sp.pitch_body = radians(_takeoff_pitch_min.get());
 		}
 
-		_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-		_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+		_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+		_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 		launch_detection_status_s launch_detection_status;
 		launch_detection_status.timestamp = now;
@@ -1879,9 +1885,9 @@ FixedwingPositionControl::control_auto_landing(const hrt_abstime &now, const flo
 
 	_att_sp.roll_body = constrainRollNearGround(_att_sp.roll_body, _current_altitude, terrain_alt);
 
-	// Apply flaps and spoilers for landing. Amount of deflection is handled in the FW attitdue controller
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_LAND;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_LAND;
+	// Apply flaps and spoilers for landing
+	_flaps_setpoint_with_slewrate.update(_param_fw_flaps_lnd_scl.get(), control_interval);
+	_spoilers_setpoint_with_slewrate.update(_param_fw_spoilers_lnd.get(), control_interval);
 
 	// deploy gear as soon as we're in land mode, if not already done before
 	_new_landing_gear_position = landing_gear_s::GEAR_DOWN;
@@ -1935,10 +1941,10 @@ FixedwingPositionControl::control_manual_altitude(const float control_interval, 
 	_att_sp.thrust_body[0] = min(get_tecs_thrust(), throttle_max);
 	_att_sp.pitch_body = get_tecs_pitch();
 
-	// In Manual modes flaps and spoilers are directly controlled in FW Attitude controller and not passed
+	// In Manual modes flaps and spoilers are directly controlled in Attitude controller and not passed
 	// through attitdue setpoints
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 }
 
 void
@@ -2060,10 +2066,10 @@ FixedwingPositionControl::control_manual_position(const float control_interval, 
 	_att_sp.thrust_body[0] = min(get_tecs_thrust(), throttle_max);
 	_att_sp.pitch_body = get_tecs_pitch();
 
-	// In Manual modes flaps and spoilers are directly controlled in FW Attitude controller and not passed
+	// In Manual modes flaps and spoilers are directly controlled in the Attitude controller and not passed
 	// through attitdue setpoints
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-	_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+	_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+	_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 }
 
 float
@@ -2338,8 +2344,8 @@ FixedwingPositionControl::Run()
 		case FW_POSCTRL_MODE_OTHER: {
 				_att_sp.thrust_body[0] = min(_att_sp.thrust_body[0], _param_fw_thr_max.get());
 
-				_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_OFF;
-				_att_sp.apply_spoilers = vehicle_attitude_setpoint_s::SPOILERS_OFF;
+				_flaps_setpoint_with_slewrate.update(0.f, control_interval);
+				_spoilers_setpoint_with_slewrate.update(0.f, control_interval);
 
 				_tecs.reset_state();
 
@@ -2388,6 +2394,18 @@ FixedwingPositionControl::Run()
 			landing_gear.landing_gear = _new_landing_gear_position;
 			landing_gear.timestamp = hrt_absolute_time();
 			_landing_gear_pub.publish(landing_gear);
+		}
+
+		if (_control_mode.flag_control_auto_enabled) {
+			flaps_setpoint_s flaps_setpoint;
+			flaps_setpoint.normalized_setpoint = _flaps_setpoint_with_slewrate.getState();
+			flaps_setpoint.timestamp = hrt_absolute_time();
+			_flaps_setpoint_pub.publish(flaps_setpoint);
+
+			spoilers_setpoint_s spoilers_setpoint;
+			spoilers_setpoint.normalized_setpoint = _spoilers_setpoint_with_slewrate.getState();
+			spoilers_setpoint.timestamp = hrt_absolute_time();
+			_spoilers_setpoint_pub.publish(spoilers_setpoint);
 		}
 
 		perf_end(_loop_perf);
