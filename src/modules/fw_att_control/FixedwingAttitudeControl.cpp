@@ -277,13 +277,9 @@ void FixedwingAttitudeControl::Run()
 
 		vehicle_land_detected_poll();
 
-		// the position controller will not emit attitude setpoints in some modes
-		// we need to make sure that this flag is reset
-		_att_sp.fw_control_yaw_wheel = _att_sp.fw_control_yaw_wheel && _vcontrol_mode.flag_control_auto_enabled;
-
 		bool wheel_control = false;
 
-		if (_param_fw_w_en.get() && _att_sp.fw_control_yaw_wheel) {
+		if (_param_fw_w_en.get() && _att_sp.fw_control_yaw_wheel && _vcontrol_mode.flag_control_auto_enabled) {
 			wheel_control = true;
 		}
 
