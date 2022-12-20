@@ -468,6 +468,7 @@ void Tiltrotor::fill_actuator_outputs()
 
 	} else {
 		_thrust_setpoint_0->xyz[2] = mc_in[actuator_controls_s::INDEX_THROTTLE] * _mc_throttle_weight;
+		collective_thrust_normalized_setpoint = mc_in[actuator_controls_s::INDEX_THROTTLE] * _mc_throttle_weight;
 	}
 
 	// Fixed wing output
