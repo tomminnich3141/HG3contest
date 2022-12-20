@@ -73,6 +73,7 @@
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/airspeed_validated.h>
 #include <uORB/topics/landing_gear.h>
+#include <uORB/topics/flaps_setpoint.h>
 #include <uORB/topics/launch_detection_status.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/npfg_status.h>
@@ -80,6 +81,7 @@
 #include <uORB/topics/position_controller_landing_status.h>
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/position_setpoint_triplet.h>
+#include <uORB/topics/spoilers_setpoint.h>
 #include <uORB/topics/tecs_status.h>
 #include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_air_data.h>
@@ -171,6 +173,9 @@ static constexpr float MANUAL_TOUCHDOWN_NUDGE_INPUT_DEADZONE = 0.15f;
 // [s] time interval after touchdown for ramping in runway clamping constraints (touchdown is assumed at FW_LND_TD_TIME after start of flare)
 static constexpr float POST_TOUCHDOWN_CLAMP_TIME = 0.5f;
 
+static constexpr float kFlapSlewRate = 1.f; //minimum time from none to full flap deflection [s]
+static constexpr float kSpoilersSlewRate = 1.f; //minimum time from none to full spoiler deflection [s]
+
 class FixedwingPositionControl final : public ModuleBase<FixedwingPositionControl>, public ModuleParams,
 	public px4::WorkItem
 {
@@ -219,6 +224,8 @@ private:
 	uORB::Publication<launch_detection_status_s> _launch_detection_status_pub{ORB_ID(launch_detection_status)};
 	uORB::PublicationMulti<orbit_status_s> _orbit_status_pub{ORB_ID(orbit_status)};
 	uORB::Publication<landing_gear_s> _landing_gear_pub{ORB_ID(landing_gear)};
+	uORB::Publication<flaps_setpoint_s> _flaps_setpoint_pub{ORB_ID(flaps_setpoint)};
+	uORB::Publication<spoilers_setpoint_s> _spoilers_setpoint_pub{ORB_ID(spoilers_setpoint)};
 
 	manual_control_setpoint_s _manual_control_setpoint{};
 	position_setpoint_triplet_s _pos_sp_triplet{};
@@ -422,6 +429,10 @@ private:
 
 	// LANDING GEAR
 	int8_t _new_landing_gear_position{landing_gear_s::GEAR_KEEP};
+
+	// FLAPS/SPOILERS
+	SlewRate<float> _flaps_setpoint_with_slewrate;
+	SlewRate<float> _spoilers_setpoint_with_slewrate;
 
 	hrt_abstime _time_in_fixed_bank_loiter{0}; // [us]
 	float _min_current_sp_distance_xy{FLT_MAX};
@@ -845,6 +856,11 @@ private:
 		(ParamFloat<px4::params::FW_THR_MAX>) _param_fw_thr_max,
 		(ParamFloat<px4::params::FW_THR_MIN>) _param_fw_thr_min,
 		(ParamFloat<px4::params::FW_THR_SLEW_MAX>) _param_fw_thr_slew_max,
+
+		(ParamFloat<px4::params::FW_FLAPS_LND_SCL>) _param_fw_flaps_lnd_scl,
+		(ParamFloat<px4::params::FW_FLAPS_TO_SCL>) _param_fw_flaps_to_scl,
+		(ParamFloat<px4::params::FW_SPOILERS_LND>) _param_fw_spoilers_lnd,
+		(ParamFloat<px4::params::FW_SPOILERS_DESC>) _param_fw_spoilers_desc,
 
 		(ParamInt<px4::params::FW_POS_STK_CONF>) _param_fw_pos_stk_conf,
 

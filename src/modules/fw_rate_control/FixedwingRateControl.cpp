@@ -51,8 +51,6 @@ FixedwingRateControl::FixedwingRateControl(bool vtol) :
 	parameters_update();
 
 	_rate_ctrl_status_pub.advertise();
-	_spoiler_setpoint_with_slewrate.setSlewRate(kSpoilerSlewRate);
-	_flaps_setpoint_with_slewrate.setSlewRate(kFlapSlewRate);
 }
 
 FixedwingRateControl::~FixedwingRateControl()
@@ -238,12 +236,6 @@ void FixedwingRateControl::Run()
 			yawspeed = helper;
 		}
 
-
-		// this is only to pass through flaps/spoiler setpoints, can be removed once flaps/spoilers
-		// are handled outside of attitude/rate controller.
-		// TODO remove it
-		_att_sp_sub.update(&_att_sp);
-
 		// vehicle status update must be before the vehicle_control_mode poll, otherwise rate sp are not published during whole transition
 		_vehicle_status_sub.update(&_vehicle_status);
 		const bool is_in_transition_except_tailsitter = _vehicle_status.in_transition_mode
@@ -260,14 +252,9 @@ void FixedwingRateControl::Run()
 
 		/* if we are in rotary wing mode, do nothing */
 		if (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING && !_vehicle_status.is_vtol) {
-			_spoiler_setpoint_with_slewrate.setForcedValue(0.f);
-			_flaps_setpoint_with_slewrate.setForcedValue(0.f);
 			perf_end(_loop_perf);
 			return;
 		}
-
-		controlFlaps(dt);
-		controlSpoilers(dt);
 
 		if (_vcontrol_mode.flag_control_rates_enabled) {
 
@@ -330,13 +317,6 @@ void FixedwingRateControl::Run()
 				trim_yaw += interpolate(airspeed, _param_fw_airspd_trim.get(), _param_fw_airspd_max.get(), 0.0f,
 							_param_fw_dtrim_y_vmax.get());
 			}
-
-			/* add trim increment if flaps are deployed  */
-			trim_roll += _flaps_setpoint_with_slewrate.getState() * _param_fw_dtrim_r_flps.get();
-			trim_pitch += _flaps_setpoint_with_slewrate.getState() * _param_fw_dtrim_p_flps.get();
-
-			// add trim increment from spoilers (only pitch)
-			trim_pitch += _spoiler_setpoint_with_slewrate.getState() * _param_fw_dtrim_p_spoil.get();
 
 			if (_vcontrol_mode.flag_control_rates_enabled) {
 				_rates_sp_sub.update(&_rates_sp);
@@ -404,10 +384,6 @@ void FixedwingRateControl::Run()
 		_actuator_controls.control[actuator_controls_s::INDEX_YAW] += _param_fw_rll_to_yaw_ff.get()
 				* constrain(_actuator_controls.control[actuator_controls_s::INDEX_ROLL], -1.0f, 1.0f);
 
-		_actuator_controls.control[actuator_controls_s::INDEX_FLAPS] = _flaps_setpoint_with_slewrate.getState();
-		_actuator_controls.control[actuator_controls_s::INDEX_SPOILERS] = _spoiler_setpoint_with_slewrate.getState();
-		_actuator_controls.control[actuator_controls_s::INDEX_AIRBRAKES] = 0.f;
-
 		/* lazily publish the setpoint only once available */
 		_actuator_controls.timestamp = hrt_absolute_time();
 		_actuator_controls.timestamp_sample = vehicle_angular_velocity.timestamp;
@@ -455,73 +431,6 @@ void FixedwingRateControl::publishThrustSetpoint(const hrt_abstime &timestamp_sa
 	v_thrust_sp.xyz[2] = 0.0f;
 
 	_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
-}
-
-void FixedwingRateControl::controlFlaps(const float dt)
-{
-	/* default flaps to center */
-	float flap_control = 0.0f;
-
-	/* map flaps by default to manual if valid */
-	if (PX4_ISFINITE(_manual_control_setpoint.flaps) && _vcontrol_mode.flag_control_manual_enabled) {
-		flap_control = _manual_control_setpoint.flaps;
-
-	} else if (_vcontrol_mode.flag_control_auto_enabled) {
-
-		switch (_att_sp.apply_flaps) {
-		case vehicle_attitude_setpoint_s::FLAPS_OFF:
-			flap_control = 0.0f; // no flaps
-			break;
-
-		case vehicle_attitude_setpoint_s::FLAPS_LAND:
-			flap_control = _param_fw_flaps_lnd_scl.get();
-			break;
-
-		case vehicle_attitude_setpoint_s::FLAPS_TAKEOFF:
-			flap_control = _param_fw_flaps_to_scl.get();
-			break;
-		}
-	}
-
-	// move the actual control value continuous with time, full flap travel in 1sec
-	_flaps_setpoint_with_slewrate.update(math::constrain(flap_control, 0.f, 1.f), dt);
-}
-
-void FixedwingRateControl::controlSpoilers(const float dt)
-{
-	float spoiler_control = 0.f;
-
-	if (_vcontrol_mode.flag_control_manual_enabled) {
-		switch (_param_fw_spoilers_man.get()) {
-		case 0:
-			break;
-
-		case 1:
-			spoiler_control = PX4_ISFINITE(_manual_control_setpoint.flaps) ? _manual_control_setpoint.flaps : 0.f;
-			break;
-
-		case 2:
-			spoiler_control = PX4_ISFINITE(_manual_control_setpoint.aux1) ? _manual_control_setpoint.aux1 : 0.f;
-			break;
-		}
-
-	} else if (_vcontrol_mode.flag_control_auto_enabled) {
-		switch (_att_sp.apply_spoilers) {
-		case vehicle_attitude_setpoint_s::SPOILERS_OFF:
-			spoiler_control = 0.f;
-			break;
-
-		case vehicle_attitude_setpoint_s::SPOILERS_LAND:
-			spoiler_control = _param_fw_spoilers_lnd.get();
-			break;
-
-		case vehicle_attitude_setpoint_s::SPOILERS_DESCEND:
-			spoiler_control = _param_fw_spoilers_desc.get();
-			break;
-		}
-	}
-
-	_spoiler_setpoint_with_slewrate.update(math::constrain(spoiler_control, 0.f, 1.f), dt);
 }
 
 void FixedwingRateControl::updateActuatorControlsStatus(float dt)
