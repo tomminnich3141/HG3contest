@@ -120,8 +120,8 @@ private:
 	uORB::Publication<actuator_controls_status_s>	_actuator_controls_status_pub;
 	uORB::Publication<vehicle_rates_setpoint_s>	_rate_sp_pub{ORB_ID(vehicle_rates_setpoint)};
 	uORB::PublicationMulti<rate_ctrl_status_s>	_rate_ctrl_status_pub{ORB_ID(rate_ctrl_status)};
-	uORB::Publication<vehicle_thrust_setpoint_s>	_vehicle_thrust_setpoint_pub{ORB_ID(vehicle_thrust_setpoint)};
-	uORB::Publication<vehicle_torque_setpoint_s>	_vehicle_torque_setpoint_pub{ORB_ID(vehicle_torque_setpoint)};
+	uORB::Publication<vehicle_torque_setpoint_s>	_vehicle_torque_setpoint_pub;
+	uORB::Publication<vehicle_thrust_setpoint_s>	_vehicle_thrust_setpoint_pub;
 
 	actuator_controls_s			_actuator_controls{};
 	manual_control_setpoint_s		_manual_control_setpoint{};

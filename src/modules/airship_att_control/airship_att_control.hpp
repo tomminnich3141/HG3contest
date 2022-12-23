@@ -89,8 +89,8 @@ private:
 	uORB::SubscriptionCallbackWorkItem _vehicle_angular_velocity_sub{this, ORB_ID(vehicle_angular_velocity)};
 
 	uORB::Publication<actuator_controls_s>          _actuator_controls_0_pub;
-	uORB::Publication<vehicle_thrust_setpoint_s>    _vehicle_thrust_setpoint_pub{ORB_ID(vehicle_thrust_setpoint)};
-	uORB::Publication<vehicle_torque_setpoint_s>    _vehicle_torque_setpoint_pub{ORB_ID(vehicle_torque_setpoint)};
+	uORB::Publication<vehicle_thrust_setpoint_s>    _vehicle_thrust_setpoint_pub{ORB_ID(vehicle_thrust_setpoint_0)};
+	uORB::Publication<vehicle_torque_setpoint_s>    _vehicle_torque_setpoint_pub{ORB_ID(vehicle_torque_setpoint_0)};
 
 	manual_control_setpoint_s       _manual_control_setpoint{};
 	vehicle_status_s                _vehicle_status{};

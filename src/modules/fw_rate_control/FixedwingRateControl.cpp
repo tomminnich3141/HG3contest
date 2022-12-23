@@ -45,6 +45,8 @@ FixedwingRateControl::FixedwingRateControl(bool vtol) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	_actuator_controls_0_pub(vtol ? ORB_ID(actuator_controls_virtual_fw) : ORB_ID(actuator_controls_0)),
 	_actuator_controls_status_pub(vtol ? ORB_ID(actuator_controls_status_1) : ORB_ID(actuator_controls_status_0)),
+	_vehicle_torque_setpoint_pub(vtol ? ORB_ID(vehicle_torque_setpoint_virtual_fw) : ORB_ID(vehicle_torque_setpoint_0)),
+	_vehicle_thrust_setpoint_pub(vtol ? ORB_ID(vehicle_thrust_setpoint_virtual_fw) : ORB_ID(vehicle_thrust_setpoint_0)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
 	/* fetch initial parameter values */
@@ -394,10 +396,8 @@ void FixedwingRateControl::Run()
 		    _vcontrol_mode.flag_control_manual_enabled) {
 			_actuator_controls_0_pub.publish(_actuator_controls);
 
-			if (!_vehicle_status.is_vtol) {
-				publishTorqueSetpoint(angular_velocity.timestamp_sample);
-				publishThrustSetpoint(angular_velocity.timestamp_sample);
-			}
+			publishTorqueSetpoint(angular_velocity.timestamp_sample);
+			publishThrustSetpoint(angular_velocity.timestamp_sample);
 		}
 
 		updateActuatorControlsStatus(dt);

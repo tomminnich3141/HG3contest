@@ -47,6 +47,8 @@ MulticopterRateControl::MulticopterRateControl(bool vtol) :
 	ModuleParams(nullptr),
 	WorkItem(MODULE_NAME, px4::wq_configurations::rate_ctrl),
 	_actuator_controls_0_pub(vtol ? ORB_ID(actuator_controls_virtual_mc) : ORB_ID(actuator_controls_0)),
+	_vehicle_torque_setpoint_pub(vtol ? ORB_ID(vehicle_torque_setpoint_virtual_mc) : ORB_ID(vehicle_torque_setpoint_0)),
+	_vehicle_thrust_setpoint_pub(vtol ? ORB_ID(vehicle_thrust_setpoint_virtual_mc) : ORB_ID(vehicle_thrust_setpoint_0)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
 	_vehicle_status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
@@ -230,10 +232,8 @@ MulticopterRateControl::Run()
 						2) : 0.0f;
 			actuators.timestamp_sample = angular_velocity.timestamp_sample;
 
-			if (!_vehicle_status.is_vtol) {
-				publishTorqueSetpoint(att_control, angular_velocity.timestamp_sample);
-				publishThrustSetpoint(angular_velocity.timestamp_sample);
-			}
+			publishTorqueSetpoint(att_control, angular_velocity.timestamp_sample);
+			publishThrustSetpoint(angular_velocity.timestamp_sample);
 
 			// scale effort by battery status if enabled
 			if (_param_mc_bat_scale_en.get()) {
