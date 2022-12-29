@@ -47,8 +47,6 @@ void LoggedTopics::add_default_topics()
 {
 	add_topic("action_request");
 	add_topic("actuator_armed");
-	add_topic("actuator_controls_0", 50);
-	add_topic("actuator_controls_1", 100);
 	add_topic("actuator_controls_2", 100);
 	add_optional_topic("actuator_controls_status_0", 300);
 	add_topic("airspeed", 1000);
@@ -237,8 +235,6 @@ void LoggedTopics::add_default_topics()
 	}
 
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
-	add_topic("actuator_controls_virtual_fw");
-	add_topic("actuator_controls_virtual_mc");
 	add_topic("fw_virtual_attitude_setpoint");
 	add_topic("mc_virtual_attitude_setpoint");
 	add_topic("vehicle_torque_setpoint_virtual_mc");
@@ -379,8 +375,6 @@ void LoggedTopics::add_raw_imu_accel_fifo()
 void LoggedTopics::add_system_identification_topics()
 {
 	// for system id need to log imu and controls at full rate
-	add_topic("actuator_controls_0");
-	add_topic("actuator_controls_1");
 	add_topic("sensor_combined");
 	add_topic("vehicle_angular_velocity");
 	add_topic("vehicle_torque_setpoint");
